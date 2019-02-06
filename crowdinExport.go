@@ -17,6 +17,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"go-crowdinproxy"
 	"github.com/medisafe/go-crowdin"
 )
 
@@ -69,7 +70,11 @@ func main() {
     //fmt.Printf("filename=%s\n",key)
     
     // Create a connection
-    api := crowdin.New(key, project)
+    api,err := crowdinproxy.New(key, project, "http://proxy:3128/")
+    if err !=nil {
+        fmt.Printf("crowdinExport() - connection problem %s\n",err)
+        os.Exit(1)
+    }
     
     //api.SetDebug(true, nil)
 
