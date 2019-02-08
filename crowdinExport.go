@@ -25,19 +25,23 @@ func main() {
 
 	var versionFlg bool
 	var buildFlg bool
+	var proxy string
 
 	const usageVersion   = "Display Version"
 	const usageBuild   = "Request a build"
+	const usageProxy   = "Use a proxy followed with url"
     
-    // Have to create a specific set, the default one is poluted by some test stuff from another lib (?!) 
+    // Have to create a spbyecific set, the default one is poluted by some test stuff from another lib (?!) 
     checkFlags := flag.NewFlagSet("check", flag.ExitOnError)
     
 	checkFlags.BoolVar(&versionFlg, "version", false, usageVersion)
 	checkFlags.BoolVar(&versionFlg, "v", false, usageVersion + " (shorthand)")
 	checkFlags.BoolVar(&buildFlg, "build", false, usageBuild)
 	checkFlags.BoolVar(&buildFlg, "b", false, usageBuild + " (shorthand)")
+	checkFlags.StringVar(&proxy, "proxy", "", usageProxy)
+	checkFlags.StringVar(&proxy, "p", "", usageProxy + " (shorthand)")
 	checkFlags.Usage = func() {
-        fmt.Printf("Usage: %s <key> <project name> <path and name of zip>\n",os.Args[0])
+        fmt.Printf("Usage: %s <opt> <key> <project name> <path and name of zip>\n",os.Args[0])
         checkFlags.PrintDefaults()
     }
 
@@ -45,32 +49,82 @@ func main() {
 	checkFlags.Parse(os.Args[1:])
 	
 	if versionFlg {
-		fmt.Printf("Version %s\n", "2019-01  v0.1.0")
+		fmt.Printf("Version %s\n", "2019-02  v0.2.0")
 		os.Exit(0)
 	}
 
-	if (buildFlg && len(os.Args) < 4) ||
-       (!buildFlg && len(os.Args) < 3)   {
-		checkFlags.Usage()  // Display usage
-		fmt.Printf("Missing parameters\n")
-        os.Exit(1)
-	}
+	// Check syntax
+	// crowdinExport <key> <proj name> <path>
+	// crowdinExport -b <key> <proj name> <path>
+	// crowdinExport -p <proxy> <key> <proj name> <path>
+	// crowdinExport -b -p <proxy> <key> <proj name> <path>
+	switch nbArgs := len(os.Args); {
+        case nbArgs <= 3: 
+            checkFlags.Usage()  // Display usage
+            fmt.Printf("Missing parameters\n")
+            os.Exit(1)
+        case nbArgs == 4:
+            if buildFlg || proxyFlg {
+                checkFlags.Usage()  // Display usage
+                fmt.Printf("Missing parameters\n")
+                os.Exit(1)
+            }
+        case nbArgs == 5:
+            if proxyFlg {
+                checkFlags.Usage()  // Display usage
+                fmt.Printf("Missing parameters\n")
+                os.Exit(1)
+            }
+        case nbArgs == 6:
+            if buildFlg {
+                checkFlags.Usage()  // Display usage
+                fmt.Printf("Too many parameters: %d\n",nbArgs)
+                fmt.Printf("param0: %s\n",os.Args[0])
+                fmt.Printf("param1: %s\n",os.Args[1])
+                fmt.Printf("param2: %s\n",os.Args[2])
+                fmt.Printf("param3: %s\n",os.Args[3])
+                fmt.Printf("param4: %s\n",os.Args[4])
+                fmt.Printf("param5: %s\n",os.Args[5])
+                
+                os.Exit(1)
+            }
+        case nbArgs == 7:
+            if !buildFlg || !proxyFlg {
+                checkFlags.Usage()  // Display usage
+                fmt.Printf("Too many parameters: %d\n",nbArgs)
+                os.Exit(1)
+            }
+    }
+        
 	
     // Parse the command parameters
-	index := 0
+    var proxy string
+    index := 0
 	if buildFlg {
         index = 1
+    }
+	if proxyFlg {
+        proxy = os.Args[1 + index]
+        index += 1
     }
     key := os.Args[1 + index]
     project := os.Args[2 + index]
     filename :=  os.Args[3 + index]
 
-    //fmt.Printf("key=%s\n",key)
-    //fmt.Printf("project=%s\n",key)
-    //fmt.Printf("filename=%s\n",key)
+    fmt.Printf("proxy=%s\n",proxy)
+    fmt.Printf("key=%s\n",key)
+    fmt.Printf("project=%s\n",project)
+    fmt.Printf("filename=%s\n",filename)
+                os.Exit(1)
     
-    // Create a connection
-    api,err := crowdinproxy.New(key, project, "http://proxy:3128/")
+    // Create a connection with or without proxy
+    var err error
+    var api *crowdin.Crowdin
+    if proxyFlg {
+        api,err = crowdinproxy.New(key, project, proxy)
+    } else {
+        api = crowdin.New(key, project)       
+    }
     if err !=nil {
         fmt.Printf("crowdinExport() - connection problem %s\n",err)
         os.Exit(1)
