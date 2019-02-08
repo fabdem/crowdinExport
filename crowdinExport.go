@@ -49,15 +49,17 @@ func main() {
 	checkFlags.Parse(os.Args[1:])
 	
 	if versionFlg {
-		fmt.Printf("Version %s\n", "2019-02  v0.2.0")
+		fmt.Printf("Version %s\n", "2019-02  v0.2.1")
 		os.Exit(0)
 	}
+	
+	proxyFlg := ( len(proxy) > 0 )
 
 	// Check syntax
-	// crowdinExport <key> <proj name> <path>
-	// crowdinExport -b <key> <proj name> <path>
-	// crowdinExport -p <proxy> <key> <proj name> <path>
-	// crowdinExport -b -p <proxy> <key> <proj name> <path>
+	// 4 crowdinExport <key> <proj_name> <path>
+	// 5 crowdinExport -b <key> <proj_name> <path>
+	// 6 crowdinExport -p <proxy> <key> <proj_name> <path>
+	// 7 crowdinExport -b -p <proxy> <key> <proj_name> <path>
 	switch nbArgs := len(os.Args); {
         case nbArgs <= 3: 
             checkFlags.Usage()  // Display usage
@@ -76,46 +78,39 @@ func main() {
                 os.Exit(1)
             }
         case nbArgs == 6:
-            if buildFlg {
+            if buildFlg || !proxyFlg {
                 checkFlags.Usage()  // Display usage
-                fmt.Printf("Too many parameters: %d\n",nbArgs)
-                fmt.Printf("param0: %s\n",os.Args[0])
-                fmt.Printf("param1: %s\n",os.Args[1])
-                fmt.Printf("param2: %s\n",os.Args[2])
-                fmt.Printf("param3: %s\n",os.Args[3])
-                fmt.Printf("param4: %s\n",os.Args[4])
-                fmt.Printf("param5: %s\n",os.Args[5])
-                
+                fmt.Printf("Invalid or too many parameters: %d\n",nbArgs)
                 os.Exit(1)
-            }
+            }			
         case nbArgs == 7:
             if !buildFlg || !proxyFlg {
                 checkFlags.Usage()  // Display usage
-                fmt.Printf("Too many parameters: %d\n",nbArgs)
+                fmt.Printf("Invalid or too many parameters: %d\n",nbArgs)
                 os.Exit(1)
             }
     }
         
 	
     // Parse the command parameters
-    var proxy string
     index := 0
 	if buildFlg {
-        index = 1
+        index++
     }
 	if proxyFlg {
-        proxy = os.Args[1 + index]
-        index += 1
+        index += 2
     }
     key := os.Args[1 + index]
     project := os.Args[2 + index]
     filename :=  os.Args[3 + index]
 
-    fmt.Printf("proxy=%s\n",proxy)
-    fmt.Printf("key=%s\n",key)
-    fmt.Printf("project=%s\n",project)
-    fmt.Printf("filename=%s\n",filename)
-                os.Exit(1)
+    // fmt.Printf("proxyFlg=%s\n",proxyFlg)
+    // fmt.Printf("buildFlg=%s\n",buildFlg)
+    // fmt.Printf("proxy=%s\n",proxy)
+    // fmt.Printf("key=%s\n",key)
+    // fmt.Printf("project=%s\n",project)
+    // fmt.Printf("filename=%s\n",filename)
+    // os.Exit(1)
     
     // Create a connection with or without proxy
     var err error
