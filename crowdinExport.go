@@ -1,15 +1,18 @@
 package main
 
-//	F.Demurger 2019-01
+//	F.Demurger 2019-02
 //  	3 args: key, project name and zip file name
 //
 //      Option -v version
 //      Option -b to build the project
 //            Optionnaly build the project and download the zip with all languages. 
+//      Option -p <proxy url> to use a proxy. 
+//
+//      To be noted: comm timeout is 40s when not using a proxy and 300s with proxy. The no-proxy timeout is hard coded in the lib :(
 //      Returns 1 if there was an error
 //      If option built is used, returns "built" or "skipped" if the command is successful and depending if the build was actually done.
 //
-//
+//       
 //	cross compilation AMD64:  env GOOS=windows GOARCH=amd64 go build crowdinExport.go
 
 
@@ -17,7 +20,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"go-crowdinproxy"
+	"github.com/fabdem/go-crowdinproxy"
+	//"go-crowdinproxy"
 	"github.com/medisafe/go-crowdin"
 )
 
@@ -49,7 +53,7 @@ func main() {
 	checkFlags.Parse(os.Args[1:])
 	
 	if versionFlg {
-		fmt.Printf("Version %s\n", "2019-02  v0.2.1")
+		fmt.Printf("Version %s\n", "2019-02  v1.0.0")
 		os.Exit(0)
 	}
 	
@@ -116,6 +120,7 @@ func main() {
     var err error
     var api *crowdin.Crowdin
     if proxyFlg {
+        crowdinproxy.SetTimeouts(5, 300) // insec
         api,err = crowdinproxy.New(key, project, proxy)
     } else {
         api = crowdin.New(key, project)       
