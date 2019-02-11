@@ -23,13 +23,36 @@ import (
 	"github.com/fabdem/go-crowdinproxy"
 	//"go-crowdinproxy"
 	"github.com/medisafe/go-crowdin"
+    "time"
 )
+
+var idx int = 0
+var finishChan chan struct{}
+
+func animation() {    
+    sequence := [...]string {"\b|","\b/","\b-","\b\\"}
+    // sequence := [...]string {" 1"," 2"," 3"," 4"}
+                            
+    for {
+        select {
+            default: 
+                fmt.Printf("%s",sequence[idx])
+                idx = (idx + 1) % len(sequence) 
+                amt := time.Duration(100)
+                time.Sleep(time.Millisecond * amt) 
+                
+            case <-finishChan:
+                return
+        }
+    }
+}
 
 func main() {
 
 	var versionFlg bool
 	var buildFlg bool
 	var proxy string
+	
 
 	const usageVersion   = "Display Version"
 	const usageBuild   = "Request a build"
@@ -53,7 +76,7 @@ func main() {
 	checkFlags.Parse(os.Args[1:])
 	
 	if versionFlg {
-		fmt.Printf("Version %s\n", "2019-02  v1.0.0")
+		fmt.Printf("Version %s\n", "2019-02  v1.1.0")
 		os.Exit(0)
 	}
 	
@@ -126,24 +149,29 @@ func main() {
         api = crowdin.New(key, project)       
     }
     if err !=nil {
-        fmt.Printf("crowdinExport() - connection problem %s\n",err)
+        fmt.Printf("\ncrowdinExport() - connection problem %s\n",err)
         os.Exit(1)
     }
     
     //api.SetDebug(true, nil)
+    finishChan = make(chan struct{})
+    go animation()
 
+    //time.Sleep(time.Millisecond * 5000)                   
+
+    var result string
+    
     if buildFlg {
-        
+                
         // Request a build
         response,err := api.ExportTranslations()
         
         if err !=nil {
-            fmt.Printf("crowdinExport() build request error %s\n",err)
+            fmt.Printf("\ncrowdinExport() build request error %s\n",err)
             os.Exit(1)
         }
         
-        // Return "built" or "skipped"
-        fmt.Printf("%s\r\n",response.Success.Status)
+        result = response.Success.Status
         
         // If there is no build necessary let's do a download anyway
         if response.Success.Status == "skipped" { 
@@ -157,8 +185,13 @@ func main() {
         // request zip download
         err := api.DownloadTranslations(&opt)
         if err !=nil {
-            fmt.Printf("crowdinExport() download error %s\n",err)
+            fmt.Printf("\ncrowdinExport() download error %s\n",err)
             os.Exit(1)
         }
     }
+
+    close(finishChan)  // Stop animation
+
+    // Return "built" or "skipped"
+    fmt.Printf("\b%s\r\n",result)
 }
