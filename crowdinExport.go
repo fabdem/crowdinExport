@@ -131,13 +131,13 @@ func main() {
     project := os.Args[2 + index]
     filename :=  os.Args[3 + index]
 
-    // fmt.Printf("proxyFlg=%s\n",proxyFlg)
-    // fmt.Printf("buildFlg=%s\n",buildFlg)
-    // fmt.Printf("proxy=%s\n",proxy)
-    // fmt.Printf("key=%s\n",key)
-    // fmt.Printf("project=%s\n",project)
-    // fmt.Printf("filename=%s\n",filename)
-    // os.Exit(1)
+    /* fmt.Printf("proxyFlg=%s\n",proxyFlg)
+     fmt.Printf("buildFlg=%s\n",buildFlg)
+     fmt.Printf("proxy=%s\n",proxy)
+     fmt.Printf("key=%s\n",key)
+     fmt.Printf("project=%s\n",project)
+     fmt.Printf("filename=%s\n",filename)
+     os.Exit(1) */
     
     // Create a connection with or without proxy
     var err error
@@ -170,24 +170,19 @@ func main() {
             fmt.Printf("\ncrowdinExport() build request error %s\n",err)
             os.Exit(1)
         }
-        
+
         result = response.Success.Status
-        
-        // If there is no build necessary let's do a download anyway
-        if response.Success.Status == "skipped" { 
-            buildFlg = false
-        }
+
     } 
 
-    if !buildFlg {
-        opt := crowdin.DownloadOptions{Package: "all", LocalPath: filename}
+    
+    // request zip download
+    opt := crowdin.DownloadOptions{Package: "all", LocalPath: filename}
 
-        // request zip download
-        err := api.DownloadTranslations(&opt)
-        if err !=nil {
-            fmt.Printf("\ncrowdinExport() download error %s\n",err)
-            os.Exit(1)
-        }
+    err = api.DownloadTranslations(&opt)
+    if err !=nil {
+        fmt.Printf("\ncrowdinExport() download error %s\n",err)
+        os.Exit(1)
     }
 
     close(finishChan)  // Stop animation
