@@ -5,14 +5,14 @@ package main
 //
 //      Option -v version
 //      Option -b to build the project
-//            Optionnaly build the project and download the zip with all languages. 
-//      Option -p <proxy url> to use a proxy. 
+//            Optionnaly build the project and download the zip with all languages.
+//      Option -p <proxy url> to use a proxy.
 //
 //      To be noted: comm timeout is 40s when not using a proxy and 300s with proxy. The no-proxy timeout is hard coded in the lib :(
 //      Returns 1 if there was an error
 //      If option built is used, returns "built" or "skipped" if the command is successful and depending if the build was actually done.
 //
-//       
+//
 //	cross compilation AMD64:  env GOOS=windows GOARCH=amd64 go build crowdinExport.go
 
 
@@ -20,7 +20,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"github.com/fabdem/go-crowdinproxy"
+	"github.com/fabdem/go-crowdinProxy"
 	//"go-crowdinproxy"
 	"github.com/medisafe/go-crowdin"
     "time"
@@ -29,18 +29,18 @@ import (
 var idx int = 0
 var finishChan chan struct{}
 
-func animation() {    
+func animation() {
     sequence := [...]string {"\b|","\b/","\b-","\b\\"}
     // sequence := [...]string {" 1"," 2"," 3"," 4"}
-                            
+
     for {
         select {
-            default: 
+            default:
                 fmt.Printf("%s",sequence[idx])
-                idx = (idx + 1) % len(sequence) 
+                idx = (idx + 1) % len(sequence)
                 amt := time.Duration(100)
-                time.Sleep(time.Millisecond * amt) 
-                
+                time.Sleep(time.Millisecond * amt)
+
             case <-finishChan:
                 return
         }
@@ -52,15 +52,15 @@ func main() {
 	var versionFlg bool
 	var buildFlg bool
 	var proxy string
-	
+
 
 	const usageVersion   = "Display Version"
 	const usageBuild   = "Request a build"
 	const usageProxy   = "Use a proxy followed with url"
-    
-    // Have to create a spbyecific set, the default one is poluted by some test stuff from another lib (?!) 
+
+    // Have to create a spbyecific set, the default one is poluted by some test stuff from another lib (?!)
     checkFlags := flag.NewFlagSet("check", flag.ExitOnError)
-    
+
 	checkFlags.BoolVar(&versionFlg, "version", false, usageVersion)
 	checkFlags.BoolVar(&versionFlg, "v", false, usageVersion + " (shorthand)")
 	checkFlags.BoolVar(&buildFlg, "build", false, usageBuild)
@@ -74,12 +74,12 @@ func main() {
 
     // Check parameters
 	checkFlags.Parse(os.Args[1:])
-	
+
 	if versionFlg {
-		fmt.Printf("Version %s\n", "2019-02  v1.1.0")
+		fmt.Printf("Version %s\n", "2019-02  v1.1.2")
 		os.Exit(0)
 	}
-	
+
 	proxyFlg := ( len(proxy) > 0 )
 
 	// Check syntax
@@ -88,7 +88,7 @@ func main() {
 	// 6 crowdinExport -p <proxy> <key> <proj_name> <path>
 	// 7 crowdinExport -b -p <proxy> <key> <proj_name> <path>
 	switch nbArgs := len(os.Args); {
-        case nbArgs <= 3: 
+        case nbArgs <= 3:
             checkFlags.Usage()  // Display usage
             fmt.Printf("Missing parameters\n")
             os.Exit(1)
@@ -109,7 +109,7 @@ func main() {
                 checkFlags.Usage()  // Display usage
                 fmt.Printf("Invalid or too many parameters: %d\n",nbArgs)
                 os.Exit(1)
-            }			
+            }
         case nbArgs == 7:
             if !buildFlg || !proxyFlg {
                 checkFlags.Usage()  // Display usage
@@ -117,8 +117,8 @@ func main() {
                 os.Exit(1)
             }
     }
-        
-	
+
+
     // Parse the command parameters
     index := 0
 	if buildFlg {
@@ -138,7 +138,7 @@ func main() {
      fmt.Printf("project=%s\n",project)
      fmt.Printf("filename=%s\n",filename)
      os.Exit(1) */
-    
+
     // Create a connection with or without proxy
     var err error
     var api *crowdin.Crowdin
@@ -146,26 +146,26 @@ func main() {
         crowdinproxy.SetTimeouts(5, 300) // insec
         api,err = crowdinproxy.New(key, project, proxy)
     } else {
-        api = crowdin.New(key, project)       
+        api = crowdin.New(key, project)
     }
     if err !=nil {
         fmt.Printf("\ncrowdinExport() - connection problem %s\n",err)
         os.Exit(1)
     }
-    
+
     //api.SetDebug(true, nil)
     finishChan = make(chan struct{})
     go animation()
 
-    //time.Sleep(time.Millisecond * 5000)                   
+    //time.Sleep(time.Millisecond * 5000)
 
     var result string
-    
+
     if buildFlg {
-                
+
         // Request a build
         response,err := api.ExportTranslations()
-        
+
         if err !=nil {
             fmt.Printf("\ncrowdinExport() build request error %s\n",err)
             os.Exit(1)
@@ -173,9 +173,9 @@ func main() {
 
         result = response.Success.Status
 
-    } 
+    }
 
-    
+
     // request zip download
     opt := crowdin.DownloadOptions{Package: "all", LocalPath: filename}
 
