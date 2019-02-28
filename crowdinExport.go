@@ -81,7 +81,7 @@ func main() {
 	checkFlags.Parse(os.Args[1:])
 
 	if versionFlg {
-		fmt.Printf("Version %s\n", "2019-02  v1.3.0")
+		fmt.Printf("Version %s\n", "2019-02  v1.2.0")
 		os.Exit(0)
 	}
 
