@@ -7,8 +7,9 @@ package main
 //      Option -b to build the project
 //            Optionnaly build the project and download the zip with all languages.
 //      Option -p <proxy url> to use a proxy.
+//      Option -t <timeout in second>.
 //
-//      To be noted: comm timeout is 40s when not using a proxy and 300s with proxy. The no-proxy timeout is hard coded in the lib :(
+//      Overall default timeout set in lib: 40s
 //      Returns 1 if there was an error
 //      If option built is used, returns "built" or "skipped" if the command is successful and depending if the build was actually done.
 //
@@ -52,17 +53,21 @@ func main() {
 	var versionFlg bool
 	var buildFlg bool
 	var proxy string
+	var timeoutsec int
 
 
 	const usageVersion   = "Display Version"
-	const usageBuild   = "Request a build"
-	const usageProxy   = "Use a proxy followed with url"
+	const usageBuild     = "Request a build"
+	const usageProxy     = "Use a proxy - followed with url"
+	const usageTimeout   = "Set the communication timeout in seconds (default 40s)."
 
-    // Have to create a spbyecific set, the default one is poluted by some test stuff from another lib (?!)
-    checkFlags := flag.NewFlagSet("check", flag.ExitOnError)
+  // Have to create a specific set, the default one is poluted by some test stuff from another lib (?!)
+  checkFlags := flag.NewFlagSet("check", flag.ExitOnError)
 
 	checkFlags.BoolVar(&versionFlg, "version", false, usageVersion)
 	checkFlags.BoolVar(&versionFlg, "v", false, usageVersion + " (shorthand)")
+	checkFlags.IntVar(&timeoutsec, "timeout", 0, usageTimeout)
+	checkFlags.IntVar(&timeoutsec, "t", 0, usageTimeout + " (shorthand)")
 	checkFlags.BoolVar(&buildFlg, "build", false, usageBuild)
 	checkFlags.BoolVar(&buildFlg, "b", false, usageBuild + " (shorthand)")
 	checkFlags.StringVar(&proxy, "proxy", "", usageProxy)
@@ -76,117 +81,65 @@ func main() {
 	checkFlags.Parse(os.Args[1:])
 
 	if versionFlg {
-		fmt.Printf("Version %s\n", "2019-02  v1.1.2")
+		fmt.Printf("Version %s\n", "2019-02  v1.3.0")
 		os.Exit(0)
 	}
 
-	proxyFlg := ( len(proxy) > 0 )
+  // Parse the command parameters
+  index := len(os.Args)
+  key := os.Args[index - 3]
+  project := os.Args[index - 2]
+  filename :=  os.Args[index - 1]
 
-	// Check syntax
-	// 4 crowdinExport <key> <proj_name> <path>
-	// 5 crowdinExport -b <key> <proj_name> <path>
-	// 6 crowdinExport -p <proxy> <key> <proj_name> <path>
-	// 7 crowdinExport -b -p <proxy> <key> <proj_name> <path>
-	switch nbArgs := len(os.Args); {
-        case nbArgs <= 3:
-            checkFlags.Usage()  // Display usage
-            fmt.Printf("Missing parameters\n")
-            os.Exit(1)
-        case nbArgs == 4:
-            if buildFlg || proxyFlg {
-                checkFlags.Usage()  // Display usage
-                fmt.Printf("Missing parameters\n")
-                os.Exit(1)
-            }
-        case nbArgs == 5:
-            if proxyFlg {
-                checkFlags.Usage()  // Display usage
-                fmt.Printf("Missing parameters\n")
-                os.Exit(1)
-            }
-        case nbArgs == 6:
-            if buildFlg || !proxyFlg {
-                checkFlags.Usage()  // Display usage
-                fmt.Printf("Invalid or too many parameters: %d\n",nbArgs)
-                os.Exit(1)
-            }
-        case nbArgs == 7:
-            if !buildFlg || !proxyFlg {
-                checkFlags.Usage()  // Display usage
-                fmt.Printf("Invalid or too many parameters: %d\n",nbArgs)
-                os.Exit(1)
-            }
-    }
+  // fmt.Printf("buildFlg=%s\n",buildFlg)
+	// fmt.Printf("timeoutsec=%s\n",timeoutsec)
+  // fmt.Printf("proxy=%s\n",proxy)
+  // fmt.Printf("key=%s\n",key)
+  // fmt.Printf("project=%s\n",project)
+  // fmt.Printf("filename=%s\n",filename)
+  // os.Exit(1)
 
+  // Create a connection
+  // var api *crowdin.Crowdin
+  crowdinproxy.SetTimeouts(5, timeoutsec) // in sec
+  api,err := crowdinproxy.New(key, project, proxy)
+  if err !=nil {
+      fmt.Printf("\ncrowdinExport() - connection problem %s\n",err)
+      os.Exit(1)
+  }
 
-    // Parse the command parameters
-    index := 0
-	if buildFlg {
-        index++
-    }
-	if proxyFlg {
-        index += 2
-    }
-    key := os.Args[1 + index]
-    project := os.Args[2 + index]
-    filename :=  os.Args[3 + index]
+  //api.SetDebug(true, nil)
+  finishChan = make(chan struct{})
+  go animation()
 
-    /* fmt.Printf("proxyFlg=%s\n",proxyFlg)
-     fmt.Printf("buildFlg=%s\n",buildFlg)
-     fmt.Printf("proxy=%s\n",proxy)
-     fmt.Printf("key=%s\n",key)
-     fmt.Printf("project=%s\n",project)
-     fmt.Printf("filename=%s\n",filename)
-     os.Exit(1) */
+  //time.Sleep(time.Millisecond * 5000)
 
-    // Create a connection with or without proxy
-    var err error
-    var api *crowdin.Crowdin
-    if proxyFlg {
-        crowdinproxy.SetTimeouts(5, 300) // insec
-        api,err = crowdinproxy.New(key, project, proxy)
-    } else {
-        api = crowdin.New(key, project)
-    }
-    if err !=nil {
-        fmt.Printf("\ncrowdinExport() - connection problem %s\n",err)
-        os.Exit(1)
-    }
+  var result string
 
-    //api.SetDebug(true, nil)
-    finishChan = make(chan struct{})
-    go animation()
+  if buildFlg {
+      // Request a build
+      response,err := api.ExportTranslations()
 
-    //time.Sleep(time.Millisecond * 5000)
+      if err !=nil {
+          fmt.Printf("\ncrowdinExport() build request error %s\n",err)
+          os.Exit(1)
+      }
 
-    var result string
-
-    if buildFlg {
-
-        // Request a build
-        response,err := api.ExportTranslations()
-
-        if err !=nil {
-            fmt.Printf("\ncrowdinExport() build request error %s\n",err)
-            os.Exit(1)
-        }
-
-        result = response.Success.Status
-
-    }
+      result = response.Success.Status
+  }
 
 
-    // request zip download
-    opt := crowdin.DownloadOptions{Package: "all", LocalPath: filename}
+  // request zip download
+  opt := crowdin.DownloadOptions{Package: "all", LocalPath: filename}
 
-    err = api.DownloadTranslations(&opt)
-    if err !=nil {
-        fmt.Printf("\ncrowdinExport() download error %s\n",err)
-        os.Exit(1)
-    }
+  err = api.DownloadTranslations(&opt)
+  if err !=nil {
+      fmt.Printf("\ncrowdinExport() download error %s\n",err)
+      os.Exit(1)
+  }
 
-    close(finishChan)  // Stop animation
+  close(finishChan)  // Stop animation
 
-    // Return "built" or "skipped"
-    fmt.Printf("\b%s\r\n",result)
+  // Return "built" or "skipped"
+  fmt.Printf("\b%s\r\n",result)
 }
